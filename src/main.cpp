@@ -12,6 +12,9 @@ ClockRenderer clockRenderer(strip);
 ChimeEffects chimeEffects;
 
 unsigned long lastButtonPress = 0;
+unsigned long lastSuccessfulSyncMillis = 0;
+unsigned long nextSyncAttemptMillis = 0;
+bool clockSynchronized = false;
 
 void handleButton() {
   static bool lastState = HIGH;
@@ -32,11 +35,13 @@ void handleButton() {
   lastState = state;
 }
 
-void connectWifiWithAnimation() {
+bool connectWifiWithAnimation() {
+  WiFi.mode(WIFI_STA);
   WiFi.begin(AppConfig::SSID, AppConfig::PASSWORD);
   Serial.print("Conectando WiFi");
 
   int dot = 0;
+  unsigned long startedAt = millis();
   while (WiFi.status() != WL_CONNECTED) {
     strip.clear();
     strip.setPixelColor(dot % AppConfig::NUM_LEDS, strip.Color(0, 0, 40));
@@ -44,25 +49,70 @@ void connectWifiWithAnimation() {
     dot++;
     delay(100);
     Serial.print(".");
+
+    if (millis() - startedAt >= AppConfig::WIFI_CONNECT_TIMEOUT_MS) {
+      Serial.println("\nTimeout conectando WiFi");
+      return false;
+    }
   }
 
   Serial.printf("\nWiFi OK · IP: %s\n", WiFi.localIP().toString().c_str());
+  return true;
 }
 
-void syncClockFromNtp() {
+void disconnectWifi() {
+  WiFi.disconnect(true, false);
+  WiFi.mode(WIFI_OFF);
+  Serial.println("WiFi desconectado");
+}
+
+bool syncClockFromNtp() {
   configTime(0, 0, AppConfig::NTP_SERVER, "time.nist.gov");
   setenv("TZ", AppConfig::TZ_INFO, 1);
   tzset();
 
   Serial.print("Sincronizando NTP");
+  unsigned long startedAt = millis();
   while (time(nullptr) < 1000000000) {
     delay(500);
     Serial.print(".");
+
+    if (millis() - startedAt >= AppConfig::NTP_SYNC_TIMEOUT_MS) {
+      Serial.println("\nTimeout sincronizando NTP");
+      return false;
+    }
   }
 
   time_t now = time(nullptr);
   tm* local = localtime(&now);
+  if (local == nullptr) {
+    Serial.println("\nNo se pudo leer la hora local tras sincronizar");
+    return false;
+  }
+
   Serial.printf("\nHora: %02d:%02d:%02d\n", local->tm_hour, local->tm_min, local->tm_sec);
+  return true;
+}
+
+bool performTimeSync() {
+  if (!connectWifiWithAnimation()) {
+    disconnectWifi();
+    nextSyncAttemptMillis = millis() + AppConfig::NTP_RETRY_INTERVAL_MS;
+    return false;
+  }
+
+  const bool synced = syncClockFromNtp();
+  disconnectWifi();
+
+  if (synced) {
+    lastSuccessfulSyncMillis = millis();
+    nextSyncAttemptMillis = lastSuccessfulSyncMillis + AppConfig::NTP_RESYNC_INTERVAL_MS;
+    clockSynchronized = true;
+  } else {
+    nextSyncAttemptMillis = millis() + AppConfig::NTP_RETRY_INTERVAL_MS;
+  }
+
+  return synced;
 }
 
 void setup() {
@@ -74,8 +124,7 @@ void setup() {
   strip.setBrightness(255);
   strip.show();
 
-  connectWifiWithAnimation();
-  syncClockFromNtp();
+  performTimeSync();
 
   clockRenderer.begin();
   chimeEffects.begin();
@@ -98,6 +147,10 @@ void setup() {
 
 void loop() {
   handleButton();
+
+  if (millis() >= nextSyncAttemptMillis) {
+    performTimeSync();
+  }
 
   time_t now = time(nullptr);
   tm* local = localtime(&now);

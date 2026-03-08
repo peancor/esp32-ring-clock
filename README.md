@@ -49,6 +49,8 @@ Parámetros base del reloj en [`include/app_config.h`](include/app_config.h) y c
 | `NIGHT_BRIGHTNESS` | `15` | Brillo nocturno (0–255) |
 | `NIGHT_START` | `22` | Hora inicio modo noche (formato 24h) |
 | `NIGHT_END` | `7` | Hora fin modo noche (formato 24h) |
+| `NTP_RESYNC_INTERVAL_MS` | `86400000` | Periodo entre resincronizaciones NTP. Por defecto, una vez al dia |
+| `NTP_RETRY_INTERVAL_MS` | `300000` | Espera entre reintentos si falla la sincronizacion WiFi o NTP |
 
 ### WiFi y zona horaria
 
@@ -70,6 +72,10 @@ const char* TZ_INFO    = "CET-1CEST,M3.5.0,M10.5.0/3"; // España peninsular
 ```
 
 Si este proyecto ya se compartió con credenciales reales, cambia la clave del WiFi. Quitarla del árbol actual no la borra del historial previo.
+
+El reloj no mantiene una conexión WiFi permanente. Se conecta al arrancar para obtener la hora por NTP, se desconecta al terminar y vuelve a conectarse solo cuando vence `NTP_RESYNC_INTERVAL_MS`.
+
+Si una sincronizacion falla, el reloj sigue funcionando con la hora disponible y reintenta pasado `NTP_RETRY_INTERVAL_MS`, en lugar de quedarse reconectando continuamente.
 
 La cadena `TZ_INFO` sigue el formato POSIX. Ejemplos para otras zonas:
 

@@ -15,6 +15,11 @@ constexpr const char* PASSWORD   = WifiSecrets::PASSWORD;
 constexpr const char* NTP_SERVER = "pool.ntp.org";
 constexpr const char* TZ_INFO    = "CET-1CEST,M3.5.0,M10.5.0/3";
 
+constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
+constexpr uint32_t NTP_SYNC_TIMEOUT_MS     = 15000;
+constexpr uint32_t NTP_RESYNC_INTERVAL_MS  = 24UL * 60UL * 60UL * 1000UL;
+constexpr uint32_t NTP_RETRY_INTERVAL_MS   = 5UL * 60UL * 1000UL;
+
 constexpr uint8_t LED_PIN     = 4;
 constexpr uint8_t PIN_WS2812B = 16;
 constexpr uint8_t NUM_LEDS    = 60;
