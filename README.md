@@ -1,5 +1,7 @@
 # ESP32 RING CLOCK — Reloj LED WS2812B
 
+![ESP32 Ring Clock](assets/foto-esp32-ring-clock.jpg)
+
 Reloj analógico basado en un anillo de **60 LEDs WS2812B** controlado por un **ESP32**, sincronizado por NTP con zona horaria configurable.
 
 Cada canal de color representa una manecilla:
